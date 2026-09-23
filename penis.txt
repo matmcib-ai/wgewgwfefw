@@ -1,0 +1,276 @@
+-- ══════════════════════════════════════════════
+-- LOADSPIED ULTRA — INSTANT LOAD & MAXIMUM FFLAGS
+-- ══════════════════════════════════════════════
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+-- ══════════════════════════════════════════════
+-- ULTRA FFLAGS (EXTREME LADETEMPO & FPS BOOST)
+-- ══════════════════════════════════════════════
+local function applyFFlags()
+    local flags = {
+        -- Lade- und Asset-Streaming Optimierungen
+        ["FFlagFastAssetPreloading"] = "True",
+        ["FFlagEnableTextureManagerV2"] = "True",
+        ["FFlagOptimizeNetworkLatency"] = "True",
+        ["DFIntCSGLevelOfDetailSwitchingDistance"] = "0",
+        ["DFIntCSGLevelOfDetailSwitchingDistanceLOD1"] = "0",
+        ["DFIntCSGLevelOfDetailSwitchingDistanceLOD2"] = "0",
+        ["DFIntCSGLevelOfDetailSwitchingDistanceLOD3"] = "0",
+        ["DFIntCSGLevelOfDetailSwitchingDistanceLOD4"] = "0",
+        ["FIntMeshContentProviderForceAsyncQueueSize"] = "1024",
+        ["FFlagPreloadAllContent"] = "False",
+        ["DFIntTextureCompositorLowResFactor"] = "4",
+        ["FIntRenderTextureQuality"] = "0",
+        ["FFlagDebugDisableTextureManager"] = "True",
+
+        -- Render & Post-Processing Deaktivierung
+        ["DebugDisablePostEffects"] = "True",
+        ["DFFlagDisablePostFx"] = "True",
+        ["FFlagDisablePlayerShadows"] = "True",
+        ["FFlagGlobalShadowsOff"] = "True",
+        ["FFlagEnableLightGridDither"] = "False",
+        ["FIntRenderShadowIntensity"] = "0",
+        ["FFlagRenderFixImGuiBlur"] = "True",
+        ["DFIntLightShadowmapResolution"] = "0",
+        ["DFIntRenderClampLightCount"] = "1",
+        ["FIntMaxSunLightDist"] = "0",
+        ["FFlagDebugForceFutureIsBrightPhase3"] = "False",
+
+        -- Physik & Task Scheduler
+        ["FFlagPhysicsSkipHeavyBroadphase"] = "True",
+        ["FFlagOptimizeAnimationEvaluator"] = "True",
+        ["DFIntMaxMissedWorldSteps"] = "1",
+        ["FFlagEnablePhysicsSolverUnrolling"] = "True",
+        ["DFIntPhysicsSolverUnrollThreshold"] = "1",
+        ["FIntEnableSubsteppingAllocations"] = "0",
+
+        -- GUI & CoreGui Entlastung
+        ["DFIntCanHideGuiAndCoreGuiWithKeycodeRisk"] = "0",
+        ["FFlagOptimizeUIRendering"] = "True",
+        ["FFlagDisableVoiceChatRendering"] = "True"
+    }
+
+    local setFlag = setfflag or set_fflag or (debug and debug.setfflag)
+    if setFlag then
+        for k, v in pairs(flags) do
+            pcall(function() setFlag(k, v) end)
+        end
+    end
+end
+pcall(applyFFlags)
+
+-- ClientLoader hook: blockiert ungenutzte Controller sofort
+local __SXE_GrappleFired = false
+local __SXE_KillQ = {} 
+
+do
+    local RS = game:GetService("ReplicatedStorage")
+    local KEEP = {
+        CustomProximityPromptController = true, InteractController = true,
+        PlotController = true, AnimalController = true, PetController = true,
+        WorldBrainrotController = true, EquipBrainrotsController = true,
+        EquipBrainrotsRenderController = true, SelectBrainrotsController = true,
+        BrainrotPreloadingController = true, AssetStreamController = true,
+        AdminPanelController = true, NotificationController = true,
+    }
+
+    local function wrap(fn)
+        if newcclosure then return newcclosure(fn) end
+        return fn
+    end
+
+    local function isCtrlFolder(x)
+        return typeof(x) == "Instance" and x.Name == "Controllers" and x.Parent == RS
+    end
+
+    local oldNc
+    pcall(function()
+        oldNc = hookmetamethod(game, "__namecall", wrap(function(self, ...)
+            local method = getnamecallmethod()
+            if type(method) ~= "string" or method:lower() ~= "getchildren" then
+                return oldNc(self, ...)
+            end
+            if not isCtrlFolder(self) then return oldNc(self, ...) end
+            local s = getcallingscript()
+            if not s or tostring(s.Name) ~= "ClientLoader" then return oldNc(self, ...) end
+            local kids = oldNc(self, ...)
+            if type(kids) ~= "table" then return kids end
+            local out = {}
+            for i = 1, #kids do
+                local k = kids[i]
+                if k and KEEP[k.Name] then out[#out + 1] = k end
+            end
+            return out
+        end))
+    end)
+    task.delay(4, function() pcall(function() hookmetamethod(game, "__namecall", oldNc) end) end)
+end
+
+-- PERFORMANCE SETTINGS
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+    settings().Physics.AllowSleep = true
+    settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Skip
+end)
+pcall(function()
+    workspace.Terrain.WaterWaveSize = 0
+    workspace.Terrain.WaterWaveSpeed = 0
+    workspace.Terrain.WaterReflectance = 0
+    workspace.Terrain.WaterTransparency = 1
+    workspace.Terrain.Decoration = false
+end)
+pcall(function() setfpscap(999) end)
+pcall(function() game:GetService("ReplicatedFirst"):RemoveDefaultLoadingScreen() end)
+
+-- INSTANT LIGHTING OPTIMIZATION
+local Lighting = game:GetService("Lighting")
+task.spawn(function()
+    Lighting.Ambient = Color3.new(1, 1, 1)
+    Lighting.Brightness = 2
+    Lighting.GlobalShadows = false
+    Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+    Lighting.ShadowSoftness = 0
+    Lighting.FogEnd = 9e9
+    Lighting.FogStart = 9e9
+    Lighting.EnvironmentDiffuseScale = 0
+    Lighting.EnvironmentSpecularScale = 0
+end)
+
+-- CLEANUP LIGHTING
+local function cleanLighting()
+    for _, c in ipairs(Lighting:GetChildren()) do
+        if c.ClassName ~= "Script" and c.ClassName ~= "LocalScript" then
+            pcall(function() c:Destroy() end)
+        end
+    end
+    Lighting.DescendantAdded:Connect(function(obj)
+        if obj:IsA("Atmosphere") or obj:IsA("Clouds") or obj:IsA("PostEffect") then
+            pcall(function() obj:Destroy() end)
+        end
+    end)
+end
+task.spawn(cleanLighting)
+
+-- PLAYERS: ALLE KLEIDUNG & ACCESSOIRES LÖSCHEN
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
+
+local function optimizeAndStripChar(char)
+    if not char then return end
+    
+    local function cleanObject(obj)
+        pcall(function()
+            if obj:IsA("Accessory") or obj:IsA("Shirt") or obj:IsA("Pants") or obj:IsA("ShirtGraphic") or obj:IsA("CharacterMesh") then
+                obj:Destroy()
+            elseif obj:IsA("BasePart") then
+                obj.CastShadow = false
+                obj.Reflectance = 0
+                obj.Material = Enum.Material.SmoothPlastic
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                obj.Enabled = false
+            elseif obj:IsA("PointLight") or obj:IsA("SpotLight") then
+                obj.Enabled = false
+            end
+        end)
+    end
+
+    task.spawn(function()
+        for _, obj in ipairs(char:GetDescendants()) do
+            cleanObject(obj)
+        end
+    end)
+
+    char.DescendantAdded:Connect(function(obj)
+        task.defer(function() cleanObject(obj) end)
+    end)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr.Character then optimizeAndStripChar(plr.Character) end
+    plr.CharacterAdded:Connect(optimizeAndStripChar)
+end
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(optimizeAndStripChar)
+end)
+
+-- WORLD CLEANUP (INSTANT)
+Workspace.DescendantAdded:Connect(function(obj)
+    task.defer(function()
+        pcall(function()
+            if obj:IsA("BasePart") then
+                obj.CastShadow = false
+                obj.Reflectance = 0
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                obj.Enabled = false
+            elseif obj:IsA("PointLight") or obj:IsA("SpotLight") then
+                obj.Enabled = false
+            elseif obj:IsA("Atmosphere") or obj:IsA("Clouds") or obj:IsA("PostEffect") then
+                pcall(function() obj:Destroy() end)
+            end
+        end)
+    end)
+end)
+
+-- MATERIAL SERVICE CLEANUP
+local MaterialService = game:GetService("MaterialService")
+MaterialService.DescendantAdded:Connect(function(obj)
+    pcall(function() obj:Destroy() end)
+end)
+
+-- SOUND MUTE
+task.spawn(function()
+    for _, s in ipairs(game:GetDescendants()) do
+        if s:IsA("Sound") then
+            pcall(function() s.Volume = 0 end)
+        end
+    end
+end)
+
+-- FAST UI DISABLE
+local function cleanUI()
+    local gui = player:FindFirstChild("PlayerGui")
+    if not gui then return end
+    local DISABLE = {
+        ["ResetGui"]=true, ["TouchGui"]=true, ["CoinsShop"]=true, ["NewShop"]=true,
+        ["JumpShop"]=true, ["RodsShop"]=true, ["CandyShop"]=true, ["ValentinesShop"]=true,
+        ["Merchant"]=true, ["BrainrotTrader"]=true, ["SantaMerchant"]=true,
+        ["BeeMerchant"]=true, ["TacoMerchant"]=true, ["StockMachine"]=true,
+        ["SingleStockMachine"]=true, ["CrystalWheel"]=true, ["FuseMachine"]=true,
+        ["CraftingMachine"]=true, ["TradePlayerList"]=true, ["TradeLiveTrade"]=true,
+        ["TradePlaza"]=true, ["TradePlazaServerBrowser"]=true, ["TradePlazaSignEdit"]=true,
+        ["TradePrompts"]=true, ["HoneyBeeBase"]=true, ["TacoBase"]=true, ["LuckyBase"]=true,
+        ["EasterBase"]=true, ["BeeLuckyBlock"]=true, ["ValentinesSendGift"]=true,
+        ["ValentinesGifts"]=true, ["ValentinesCard"]=true, ["ValentinesBase"]=true,
+        ["SkullEmoji"]=true, ["ActiveEvents"]=true, ["DuelsMachineSession"]=true,
+        ["DuelsMachinePrompt"]=true, ["DuelsMachinePlayerList"]=true, ["DuelsMachineTopFrame"]=true,
+        ["DuelsMachineAnimation"]=true, ["Codes"]=true, ["Glossary"]=true, ["SkillTree"]=true,
+        ["Settings"]=true, ["Rebirth"]=true, ["BackroomsSpeedUpgrade"]=true,
+        ["PortalGui"]=true, ["PortalGuiBack"]=true, ["TsunamiSpeedUpgrade"]=true,
+        ["VoiceChat"]=true, ["DialogAnswers"]=true, ["GiftPlayer"]=true, ["Digging"]=true,
+        ["VersionLabel"]=true, ["Index"]=true, ["TopNotification"]=true, ["Notification"]=true,
+        ["LeftBottom"]=true, ["RightBottom"]=true, ["LeftCenter"]=true,
+        ["__AssetStream"]=true, ["Confirmation"]=true, ["SurfaceGui"]=true, ["ToolsFrames"]=true,
+    }
+    for _, c in ipairs(gui:GetChildren()) do
+        if DISABLE[c.Name] then pcall(function() c.Enabled = false end) end
+    end
+    gui.ChildAdded:Connect(function(c)
+        if DISABLE[c.Name] then pcall(function() c.Enabled = false end) end
+    end)
+end
+task.spawn(cleanUI)
+
+-- FAST GARBAGE COLLECTION
+task.spawn(function()
+    while true do
+        task.wait(5)
+        pcall(function() collectgarbage("collect") end)
+    end
+end)
+
+print("[LoadSpied Ultra] Loaded instantly & initialized.")
